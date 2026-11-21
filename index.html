@@ -1,0 +1,642 @@
+<title>My UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Free UPSC preparation resources — PYQs, topper copies, mains timer, interviews, maps and more.">
+<meta name="theme-color" content="#0A1428">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UPSC Hub">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap">
+
+<style>
+/*
+  Layout: full-bleed hero → usage stats bar → 12-tool grid → CTA → footer
+  Palette: deep midnight navy, electric blue accent, saffron highlight
+  Type: Instrument Serif (display) + Inter (body/ui)
+*/
+
+:root {
+  --bg:        #F5F7FA;
+  --bg-card:   #FFFFFF;
+  --fg:        #0D1B30;
+  --fg-muted:  #526280;
+  --accent:    #1A56DB;
+  --accent-bg: #EEF2FF;
+  --gold:      #C47300;
+  --gold-bg:   #FFF8E6;
+  --border:    #DDE3EE;
+  --hero:      #0A1428;
+  --hero-fg:   #EEF3FF;
+  --hero-muted:#6B87AD;
+  --stat-bg:   #0D1B30;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #080E1C;
+    --bg-card:   #0E1A2E;
+    --fg:        #DDE8FF;
+    --fg-muted:  #6B87AD;
+    --accent:    #4D7EFF;
+    --accent-bg: #0E1E42;
+    --gold:      #E09000;
+    --gold-bg:   #1A1200;
+    --border:    #172040;
+    --hero:      #060C18;
+    --hero-fg:   #EEF3FF;
+    --hero-muted:#6B87AD;
+    --stat-bg:   #060C18;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:        #080E1C;
+  --bg-card:   #0E1A2E;
+  --fg:        #DDE8FF;
+  --fg-muted:  #6B87AD;
+  --accent:    #4D7EFF;
+  --accent-bg: #0E1E42;
+  --gold:      #E09000;
+  --gold-bg:   #1A1200;
+  --border:    #172040;
+  --hero:      #060C18;
+  --hero-fg:   #EEF3FF;
+  --hero-muted:#6B87AD;
+  --stat-bg:   #060C18;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* ── Hero ───────────────────────────────────────── */
+
+.hero {
+  background: var(--hero);
+  color: var(--hero-fg);
+  position: relative;
+  overflow: hidden;
+  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+  padding-bottom: 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Soft glow rings */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(77,126,255,.12) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 15% 80%, rgba(224,144,0,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Fine grid texture */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.hero-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.75rem;
+}
+
+.hero-byline::before {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 1.5px;
+  background: var(--gold);
+}
+
+.hero h1 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.25rem;
+  text-wrap: balance;
+  color: var(--hero-fg);
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+  /* accent in italic serif looks distinctive */
+}
+
+.hero-sub {
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
+  color: var(--hero-muted);
+  max-width: 520px;
+  margin: 0 0 2.5rem;
+  line-height: 1.65;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: opacity .15s, transform .1s;
+}
+
+.btn:active { transform: scale(.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover { opacity: .88; }
+
+.btn-ghost {
+  color: var(--hero-muted);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.btn-ghost:hover {
+  color: var(--hero-fg);
+  border-color: rgba(255,255,255,.28);
+}
+
+/* ── Stats bar ──────────────────────────────────── */
+
+.stats-bar {
+  background: var(--stat-bg);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding-block: 1.4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.stats-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2.5rem;
+  align-items: flex-start;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stat-n {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #EEF3FF;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.stat-l {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #56738A;
+}
+
+/* ── Main ───────────────────────────────────────── */
+
+.wrapper {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-block: 3.5rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Feature grid ───────────────────────────────── */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  gap: 1px;
+  background: var(--border);
+  margin-bottom: 3.5rem;
+}
+
+.card {
+  background: var(--bg-card);
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  transition: background .15s;
+  min-width: 0;
+}
+
+.card:hover { background: var(--accent-bg); }
+
+.card:hover .card-title { color: var(--accent); }
+
+.card-num {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--fg);
+  transition: color .15s;
+  text-wrap: balance;
+}
+
+.card-desc {
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 0.6rem;
+}
+
+.chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.chip-gold {
+  background: var(--gold-bg);
+  color: var(--gold);
+}
+
+/* ── CTA section ────────────────────────────────── */
+
+.cta {
+  background: var(--hero);
+  color: var(--hero-fg);
+  border-radius: 14px;
+  padding: 3rem 2.5rem;
+  text-align: center;
+  margin-bottom: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(77,126,255,.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.cta-inner { position: relative; z-index: 1; }
+
+.cta h2 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 400;
+  margin: 0 0 0.6rem;
+  text-wrap: balance;
+}
+
+.cta p {
+  color: var(--hero-muted);
+  margin: 0 0 2rem;
+  font-size: 0.95rem;
+}
+
+/* ── Footer ─────────────────────────────────────── */
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding-block: 1.75rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.footer-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+}
+
+.footer-links a {
+  color: var(--fg-muted);
+  text-decoration: none;
+}
+.footer-links a:hover { color: var(--fg); }
+
+/* ── Responsive ─────────────────────────────────── */
+
+@media (max-width: 540px) {
+  .hero h1 { font-size: 2.2rem; }
+  .grid { grid-template-columns: 1fr; border-radius: 10px; }
+  .cta { padding: 2rem 1.25rem; }
+  .cta h2 { font-size: 1.5rem; }
+  .stats-inner { gap: 1rem 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .card { transition: none; }
+}
+</style>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-byline">Personal &middot; UPSC Resources</div>
+    <h1>Everything I need to <em>prepare for the Civil Services</em></h1>
+    <p class="hero-sub">PYQs with explanations, topper answer copies, interview transcripts, Mains timer, current affairs and more — all free, all in one place.</p>
+    <div class="hero-actions">
+      <a href="https://upsckata.com" class="btn btn-primary" target="_blank" rel="noopener">
+        Open UPSC Kata &rarr;
+      </a>
+      <a href="https://t.me/upsckata" class="btn btn-ghost" target="_blank" rel="noopener">
+        Join Telegram
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Stats bar -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat">
+      <span class="stat-n">1,28,932</span>
+      <span class="stat-l">Answers read</span>
+    </div>
+    <div class="stat">
+      <span class="stat-n">4,288</span>
+      <span class="stat-l">CA articles read</span>
+    </div>
+    <div class="stat">
+      <span class="stat-n">5,851</span>
+      <span class="stat-l">Pre Qs answered</span>
+    </div>
+    <div class="stat">
+      <span class="stat-n">11,770</span>
+      <span class="stat-l">Mains PYQs read</span>
+    </div>
+    <div class="stat">
+      <span class="stat-n">1,592</span>
+      <span class="stat-l">Pomodoro hours</span>
+    </div>
+  </div>
+</div>
+
+<!-- Feature grid -->
+<div class="wrapper">
+  <p class="section-label">12 tools inside</p>
+
+  <div class="grid">
+
+    <a class="card" href="https://upsckata.com/pre" target="_blank" rel="noopener">
+      <span class="card-num">01</span>
+      <h2 class="card-title">Pre PYQs</h2>
+      <p class="card-desc">GS Paper I and CSAT questions by year, with explanations. See what's asked more or less over time, sit a booklet against the clock, or practise by subject.</p>
+      <div class="card-meta">
+        <span class="chip">1,600 GS questions</span>
+        <span class="chip">1,200 CSAT</span>
+        <span class="chip">2011–2026</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/tests" target="_blank" rel="noopener">
+      <span class="card-num">02</span>
+      <h2 class="card-title">Your Tests</h2>
+      <p class="card-desc">Upload a test's PDF and sit it against the clock. Results break down your score by subject and subtopic, including how your 50-50 guesses landed.</p>
+      <div class="card-meta">
+        <span class="chip">Up to 200 questions</span>
+        <span class="chip">Timed</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/topper-copies" target="_blank" rel="noopener">
+      <span class="card-num">03</span>
+      <h2 class="card-title">Topper Copies</h2>
+      <p class="card-desc">Mains answers typed out of topper copies, with each topper's rank and subject-wise marks. 197 toppers across GS and optionals, 2018–2025.</p>
+      <div class="card-meta">
+        <span class="chip chip-gold">12,272 typed answers</span>
+        <span class="chip">197 toppers</span>
+        <span class="chip">2018–2025</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/mains" target="_blank" rel="noopener">
+      <span class="card-num">04</span>
+      <h2 class="card-title">Mains PYQs</h2>
+      <p class="card-desc">GS 1–4, Essay and 28 optional papers, every question tagged by syllabus chapter and subtopic. Filter, sort and mark questions done as you go.</p>
+      <div class="card-meta">
+        <span class="chip chip-gold">24,607 questions</span>
+        <span class="chip">885 papers</span>
+        <span class="chip">28 optionals</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/timer" target="_blank" rel="noopener">
+      <span class="card-num">05</span>
+      <h2 class="card-title">Mains Timer</h2>
+      <p class="card-desc">A timer for answer writing. Up to 20 questions per paper, with time for brainstorm, intro, body and conclusion. Voice or bell at each stage change.</p>
+      <div class="card-meta">
+        <span class="chip">Up to 20 questions</span>
+        <span class="chip">5–20 marks each</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/interviews" target="_blank" rel="noopener">
+      <span class="card-num">06</span>
+      <h2 class="card-title">Interviews</h2>
+      <p class="card-desc">Interview transcripts split by board member. Search or filter by board, year, optional, home state and more across 21 boards and 2017–2026.</p>
+      <div class="card-meta">
+        <span class="chip chip-gold">83,063 questions</span>
+        <span class="chip">21 boards</span>
+        <span class="chip">38 optionals</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/ca" target="_blank" rel="noopener">
+      <span class="card-num">07</span>
+      <h2 class="card-title">Current Affairs</h2>
+      <p class="card-desc">Daily summaries as a paper, cards or a table. Searchable, groupable by subject. Play clippings read aloud by an AI voice. Highlight and note with sign-in.</p>
+      <div class="card-meta">
+        <span class="chip">Daily</span>
+        <span class="chip">AI voice</span>
+        <span class="chip">CSV &amp; PDF export</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/map" target="_blank" rel="noopener">
+      <span class="card-num">08</span>
+      <h2 class="card-title">Map</h2>
+      <p class="card-desc">India and world maps for Prelims. Browse or get quizzed on where things are — 10 questions, 20 seconds each. Parks, ranges, rivers, World Heritage sites and more.</p>
+      <div class="card-meta">
+        <span class="chip">280 parks &amp; reserves</span>
+        <span class="chip">225 world sites</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/timeline" target="_blank" rel="noopener">
+      <span class="card-num">09</span>
+      <h2 class="card-title">Timeline</h2>
+      <p class="card-desc">Modern, ancient and early ancient Indian history as dated events, most with a picture. Search or filter by group and century.</p>
+      <div class="card-meta">
+        <span class="chip">385 modern events</span>
+        <span class="chip">226 ancient events</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/constitution" target="_blank" rel="noopener">
+      <span class="card-num">10</span>
+      <h2 class="card-title">Constitution</h2>
+      <p class="card-desc">The Constitution of India as a bare act with footnotes. Jump to any article by number, search the text, highlight and add notes. Recall mode quizzes you on articles.</p>
+      <div class="card-meta">
+        <span class="chip">471 articles</span>
+        <span class="chip">25 parts</span>
+        <span class="chip">12 schedules</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/history-map" target="_blank" rel="noopener">
+      <span class="card-num">11</span>
+      <h2 class="card-title">History Map</h2>
+      <p class="card-desc">The subcontinent's kingdoms on a map, step by step from 3000 BCE. A chart beside it shows each kingdom's span. Play through or follow one kingdom.</p>
+      <div class="card-meta">
+        <span class="chip">136 kingdoms</span>
+        <span class="chip">3000 BCE – 2010</span>
+      </div>
+    </a>
+
+    <a class="card" href="https://upsckata.com/pomodoro" target="_blank" rel="noopener">
+      <span class="card-num">12</span>
+      <h2 class="card-title">Pomodoro</h2>
+      <p class="card-desc">Focus timer that goes full screen. The Study Room puts you at a desk among others studying live. History tracks your focus time by paper and shows a year of daily streaks.</p>
+      <div class="card-meta">
+        <span class="chip">Study room</span>
+        <span class="chip">Leaderboard</span>
+        <span class="chip">4 ambient sounds</span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-inner">
+      <h2>Everything in one place. All free.</h2>
+      <p>Sign in to save your progress, track your answers and unlock practice modes.</p>
+      <a href="https://upsckata.com" class="btn btn-primary" target="_blank" rel="noopener">
+        Start preparing &rarr;
+      </a>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span>&copy; 2026 My UPSC Hub &middot; Free resources for UPSC prep</span>
+    <div class="footer-links">
+      <a href="mailto:hello@upsckata.com">hello@upsckata.com</a>
+      <a href="https://upsckata.com/privacy" target="_blank" rel="noopener">Privacy</a>
+      <a href="https://t.me/upsckata" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </div>
+</footer>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
