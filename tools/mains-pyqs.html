@@ -10,10 +10,45 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <style>
-.page{max-width:600px;margin:0 auto;padding:3rem 1.5rem;text-align:center}
-.icon{font-size:3rem;margin-bottom:1rem}
-h2{font-family:'Instrument Serif',serif;font-size:1.8rem;font-weight:400;margin:0 0 .75rem}
-p{color:var(--fg-muted);font-size:.9rem;line-height:1.7;margin:0 0 1.5rem}
+.layout{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 52px)}
+@media(max-width:720px){.layout{grid-template-columns:1fr;height:auto}}
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--bg-card);height:calc(100vh - 52px);position:sticky;top:52px}
+@media(max-width:720px){.sidebar{height:auto;border-right:none;border-bottom:1px solid var(--border);max-height:38vh}}
+.sb-section{padding:.4rem 0}
+.sb-section-label{padding:.4rem .75rem .15rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted)}
+.subject-btn{width:100%;text-align:left;padding:.42rem .75rem;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.8rem;color:var(--fg-muted);display:flex;align-items:center;justify-content:space-between;gap:.4rem;border-left:2px solid transparent;transition:all .12s}
+.subject-btn:hover{background:var(--accent-bg);color:var(--fg)}
+.subject-btn.active{border-left-color:var(--accent);background:var(--accent-bg);color:var(--accent);font-weight:600}
+.subject-count{font-size:.62rem;opacity:.7;flex-shrink:0}
+/* Main content */
+.main{overflow-y:auto;height:calc(100vh - 52px)}
+@media(max-width:720px){.main{height:auto}}
+.toolbar{padding:.6rem 1rem;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-card);position:sticky;top:52px;z-index:50}
+@media(max-width:720px){.toolbar{top:0}}
+.search-wrap{flex:1;min-width:140px}
+.qlist{max-width:860px;padding:.75rem 1rem}
+/* Question card */
+.q-card{background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:.85rem 1rem;margin-bottom:.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:.6rem .75rem;align-items:start;transition:border-color .15s}
+.q-card:hover{border-color:var(--accent)}
+.q-num{font-size:.62rem;font-weight:700;color:var(--accent);min-width:24px;padding-top:.1rem}
+.q-text{font-size:.88rem;color:var(--fg);line-height:1.6}
+.q-badges{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.35rem}
+.q-badge{font-size:.6rem;font-weight:600;padding:1px 6px;border-radius:100px}
+.badge-topic{background:var(--accent-bg);color:var(--accent)}
+.badge-year{background:var(--gold-bg);color:var(--gold)}
+.badge-marks{background:var(--border);color:var(--fg-muted)}
+.badge-words{background:var(--border);color:var(--fg-muted)}
+.q-year-col{font-size:.7rem;color:var(--fg-muted);white-space:nowrap;text-align:right;padding-top:.1rem}
+/* Loading / placeholder */
+.subject-loading{text-align:center;padding:3rem;color:var(--fg-muted)}
+.count-line{font-size:.75rem;color:var(--fg-muted);margin-bottom:.6rem;padding:.1rem .25rem}
+/* Stats header for selected subject */
+.subject-header{padding:.85rem 1rem .4rem;border-bottom:1px solid var(--border)}
+.subject-name{font-family:'Instrument Serif',serif;font-size:1.3rem;font-weight:400;color:var(--fg)}
+.subject-stats{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem}
+.subject-stat{font-size:.7rem;color:var(--fg-muted)}
+/* Paginate */
+#load-more-wrap{text-align:center;padding:.75rem}
 </style>
 </head>
 <body>
@@ -21,11 +56,167 @@ p{color:var(--fg-muted);font-size:.9rem;line-height:1.7;margin:0 0 1.5rem}
   <a href="../index.html" class="nav-back">← UPSC Hub</a>
   <span class="nav-title">Mains PYQs</span>
 </nav>
-<div class="page">
-  <div class="icon">📋</div>
-  <h2>Mains PYQs</h2>
-  <p>Previous year questions for UPSC Mains examination (GS1–GS4).<br>This tool is coming soon.</p>
-  <a href="../index.html" class="btn btn-ghost">Back to Hub</a>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading…</span></div>
+
+<div class="layout" id="app" hidden>
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <div class="main" id="main">
+    <div style="padding:3rem 1.5rem;text-align:center;color:var(--fg-muted)" id="welcome">
+      <div style="font-size:2rem;margin-bottom:.75rem">📋</div>
+      <div style="font-size:1rem;font-weight:600;color:var(--fg);margin-bottom:.4rem">Select a subject</div>
+      <div style="font-size:.85rem">24,607 questions across GS, Essay and 28 optional papers (2001–2026)</div>
+    </div>
+  </div>
 </div>
+
+<script>
+const BASE = 'https://upsckata.com/data/mains-pyq/';
+const PAGE = 50;
+let index = null, activeKey = null, subjectData = {}, filtered = [], shown = 0;
+
+async function init() {
+  const r = await fetch(BASE + 'index.json');
+  index = await r.json();
+  buildSidebar();
+  document.getElementById('loading').hidden = true;
+  document.getElementById('app').hidden = false;
+}
+
+function buildSidebar() {
+  const subjects = index.subjects;
+  const cse = subjects.filter(s => s.exam === 'cse');
+  const ifos = subjects.filter(s => s.exam === 'ifos');
+  const gs = cse.filter(s => s.general);
+  const opt = cse.filter(s => !s.general);
+
+  let html = `<div class="sb-section">
+    <div class="sb-section-label">CSE — General</div>
+    ${gs.map(s => subjectBtn(s)).join('')}
+  </div>
+  <div class="sb-section">
+    <div class="sb-section-label">CSE — Optional</div>
+    ${opt.map(s => subjectBtn(s)).join('')}
+  </div>
+  <div class="sb-section">
+    <div class="sb-section-label">IFoS — Optional</div>
+    ${ifos.map(s => subjectBtn(s)).join('')}
+  </div>`;
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+function subjectBtn(s) {
+  return `<button class="subject-btn" id="sb-${s.key}" onclick="selectSubject('${s.key}')">
+    <span>${esc(s.name)}</span>
+    <span class="subject-count">${s.questions}</span>
+  </button>`;
+}
+
+async function selectSubject(key) {
+  if (activeKey) document.getElementById('sb-'+activeKey)?.classList.remove('active');
+  activeKey = key;
+  document.getElementById('sb-'+key)?.classList.add('active');
+
+  const main = document.getElementById('main');
+  if (!subjectData[key]) {
+    main.innerHTML = `<div class="subject-loading"><div class="spinner" style="margin:0 auto 1rem"></div>Loading questions…</div>`;
+    try {
+      const r = await fetch(BASE + key + '.json');
+      subjectData[key] = await r.json();
+    } catch(e) {
+      main.innerHTML = `<div class="empty">Failed to load. Check your connection.</div>`;
+      return;
+    }
+  }
+  renderSubject(key);
+}
+
+function renderSubject(key) {
+  const D = subjectData[key];
+  const main = document.getElementById('main');
+  const years = [...new Set(D.questions.map(q=>q.y))].sort((a,b)=>b-a);
+  const topics = [...new Set(D.questions.map(q=>q.tp).filter(Boolean))].sort();
+
+  main.innerHTML = `
+    <div class="subject-header">
+      <div class="subject-name">${esc(D.name)}</div>
+      <div class="subject-stats">
+        <span class="subject-stat">${D.questions.length} questions</span>
+        <span class="subject-stat">·</span>
+        <span class="subject-stat">${(D.papers||[]).length} papers</span>
+        <span class="subject-stat">·</span>
+        <span class="subject-stat">${years[years.length-1]}–${years[0]}</span>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="search-wrap"><input class="search" id="q" placeholder="Search questions…" autocomplete="off"></div>
+      <select id="year"><option value="">All years</option>${years.map(y=>`<option>${y}</option>`).join('')}</select>
+      ${topics.length > 1 ? `<select id="topic"><option value="">All topics</option>${topics.map(t=>`<option>${esc(t)}</option>`).join('')}</select>` : ''}
+    </div>
+    <div class="qlist">
+      <div class="count-line" id="count"></div>
+      <div id="qlist-body"></div>
+      <div id="load-more-wrap" style="display:none">
+        <button class="btn btn-ghost" id="load-more-btn" onclick="loadMore()">Load more</button>
+      </div>
+    </div>`;
+
+  document.getElementById('q').addEventListener('input', applyFilters);
+  document.getElementById('year').addEventListener('change', applyFilters);
+  document.getElementById('topic')?.addEventListener('change', applyFilters);
+  applyFilters();
+}
+
+function applyFilters() {
+  const D = subjectData[activeKey];
+  if (!D) return;
+  const q = document.getElementById('q')?.value.toLowerCase() || '';
+  const year = document.getElementById('year')?.value || '';
+  const topic = document.getElementById('topic')?.value || '';
+
+  filtered = D.questions;
+  if (q) filtered = filtered.filter(x => (x.t||'').toLowerCase().includes(q) || (x.sy||'').toLowerCase().includes(q) || (x.tp||'').toLowerCase().includes(q));
+  if (year) filtered = filtered.filter(x => String(x.y) === year);
+  if (topic) filtered = filtered.filter(x => x.tp === topic);
+
+  document.getElementById('count').textContent = `${filtered.length.toLocaleString()} question${filtered.length!==1?'s':''}`;
+  shown = 0;
+  document.getElementById('qlist-body').innerHTML = '';
+  loadMore();
+}
+
+function loadMore() {
+  const batch = filtered.slice(shown, shown + PAGE);
+  shown += batch.length;
+
+  document.getElementById('qlist-body').insertAdjacentHTML('beforeend',
+    batch.map(q => `
+      <div class="q-card">
+        <span class="q-num">Q${q.q}</span>
+        <div>
+          <div class="q-text">${esc(q.t||'')}</div>
+          <div class="q-badges">
+            ${q.tp ? `<span class="q-badge badge-topic">${esc(q.tp)}</span>` : ''}
+            ${q.sy && q.sy !== q.tp ? `<span class="q-badge badge-marks" style="background:var(--border)">${esc(q.sy)}</span>` : ''}
+            ${q.m ? `<span class="q-badge badge-marks">${q.m}m</span>` : ''}
+            ${q.w ? `<span class="q-badge badge-words">${q.w}w</span>` : ''}
+          </div>
+        </div>
+        <span class="q-year-col">${q.y}</span>
+      </div>`).join(''));
+
+  const mw = document.getElementById('load-more-wrap');
+  mw.style.display = shown < filtered.length ? '' : 'none';
+  if (shown < filtered.length)
+    document.getElementById('load-more-btn').textContent = `Load more (${filtered.length - shown} remaining)`;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+init().catch(() => {
+  document.getElementById('loading').innerHTML = '<div class="empty">Failed to load. Check your connection.</div>';
+});
+</script>
 </body>
 </html>
