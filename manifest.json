@@ -2,7 +2,7 @@
   "name": "My UPSC Hub",
   "short_name": "UPSC Hub",
   "description": "Free UPSC preparation resources — PYQs, topper copies, mains timer, interviews, maps and more.",
-  "start_url": "/",
+  "start_url": "/upsc-hub/",
   "display": "standalone",
   "background_color": "#0A1428",
   "theme_color": "#0A1428",
