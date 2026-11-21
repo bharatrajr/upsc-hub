@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>India Map – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+body{overflow:hidden}
+.map-layout{display:flex;height:calc(100vh - 52px)}
+.sidebar{width:260px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg-card);overflow-y:auto;display:flex;flex-direction:column}
+@media(max-width:680px){.sidebar{width:100%;height:40vh;border-right:none;border-bottom:1px solid var(--border)}}
+@media(max-width:680px){.map-layout{flex-direction:column}}
+.sb-layers{padding:.6rem .75rem .25rem;border-bottom:1px solid var(--border)}
+.sb-title{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-muted);margin-bottom:.4rem}
+.layer-btn{display:flex;align-items:center;gap:.45rem;width:100%;padding:.3rem .4rem;border:none;background:none;cursor:pointer;border-radius:5px;font-size:.78rem;color:var(--fg-muted);font-family:inherit;text-align:left;transition:all .12s}
+.layer-btn:hover{background:var(--accent-bg);color:var(--fg)}
+.layer-btn.active{color:var(--fg);font-weight:600}
+.layer-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;opacity:.5}
+.layer-btn.active .layer-dot{opacity:1}
+.layer-count{font-size:.6rem;color:var(--fg-muted);margin-left:auto}
+.sb-info{flex:1;padding:.75rem;overflow-y:auto}
+.info-placeholder{color:var(--fg-muted);font-size:.82rem;text-align:center;padding:1.5rem .5rem}
+.info-name{font-size:.98rem;font-weight:700;color:var(--fg);margin-bottom:.25rem}
+.info-state{font-size:.75rem;color:var(--accent);margin-bottom:.5rem;font-weight:600}
+.info-row{display:flex;gap:.4rem;font-size:.75rem;margin-bottom:.2rem}
+.info-label{color:var(--fg-muted);flex-shrink:0;min-width:60px}
+.info-val{color:var(--fg)}
+.info-notes{margin-top:.4rem}
+.info-note{font-size:.75rem;color:var(--fg-muted);line-height:1.5}
+.info-more{margin-top:.6rem}
+.info-more-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted);margin-bottom:.2rem}
+.info-more-item{font-size:.78rem;color:var(--fg)}
+.map-wrap{flex:1;overflow:hidden;position:relative;background:var(--bg);cursor:grab}
+.map-wrap.dragging{cursor:grabbing}
+#map-svg{display:block;user-select:none}
+.india-path{fill:#1A56DB22;stroke:var(--accent);stroke-width:1}
+.state-path{fill:none;stroke:var(--border);stroke-width:.5}
+.river-path{fill:none;stroke:#2196F3;stroke-width:1.2;opacity:.7}
+.range-path{fill:none;stroke:#795548;stroke-width:1.5;opacity:.8}
+.marker-circle{cursor:pointer;transition:r .15s}
+.marker-circle:hover{r:7}
+.search-wrap-sb{padding:.5rem .75rem;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">India Map</span>
+</nav>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading Map…</span></div>
+
+<div class="map-layout" id="app" hidden>
+  <aside class="sidebar">
+    <div class="search-wrap-sb">
+      <input class="search" id="q" placeholder="Search locations…" autocomplete="off">
+    </div>
+    <div class="sb-layers" id="layer-controls"></div>
+    <div class="sb-info" id="info-panel">
+      <div class="info-placeholder">Click any marker on the map to see details.</div>
+    </div>
+  </aside>
+  <div class="map-wrap" id="map-wrap">
+    <svg id="map-svg" viewBox="0 0 1000 1140" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+</div>
+
+<script>
+const LAYERS = [
+  {k:'parks',     label:'National Parks',    color:'#4CAF50', shape:'circle'},
+  {k:'tiger',     label:'Tiger Reserves',    color:'#FF5722', shape:'circle'},
+  {k:'ramsar',    label:'Ramsar Sites',      color:'#2196F3', shape:'circle'},
+  {k:'biosphere', label:'Biosphere Reserves',color:'#9C27B0', shape:'circle'},
+  {k:'heritage',  label:'World Heritage',   color:'#FFD700', shape:'circle'},
+  {k:'peaks',     label:'Mountain Peaks',   color:'#607D8B', shape:'triangle'},
+  {k:'passes',    label:'Mountain Passes',  color:'#795548', shape:'diamond'},
+  {k:'glaciers',  label:'Glaciers',          color:'#80DEEA', shape:'circle'},
+  {k:'lakes',     label:'Lakes',             color:'#03A9F4', shape:'circle'},
+  {k:'dams',      label:'Dams',              color:'#FF9800', shape:'square'},
+  {k:'revolts',   label:'Historical Revolts',color:'#E91E63', shape:'circle'},
+  {k:'rivers',    label:'Rivers',            color:'#2196F3', shape:'line'},
+  {k:'ranges',    label:'Mountain Ranges',  color:'#795548', shape:'line'},
+];
+
+let D = null, activeLayer = null, transform = {x:0, y:0, scale:1};
+let drag = null;
+
+async function init() {
+  try {
+    const r = await fetch('https://upsckata.com/data/map.json');
+    D = await r.json();
+    document.getElementById('loading').hidden = true;
+    document.getElementById('app').hidden = false;
+    buildLayerControls();
+    buildMap();
+    setupPanZoom();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div class="empty">Failed to load map.</div>';
+  }
+}
+
+function buildLayerControls() {
+  const el = document.getElementById('layer-controls');
+  el.innerHTML = `<div class="sb-title">Map Layers</div>` +
+    LAYERS.filter(l => D[l.k] && (Array.isArray(D[l.k]) ? D[l.k].length : 1)).map(l => `
+      <button class="layer-btn" id="btn-${l.k}" onclick="toggleLayer('${l.k}')">
+        <span class="layer-dot" style="background:${l.color}"></span>
+        <span>${l.label}</span>
+        <span class="layer-count">${Array.isArray(D[l.k]) ? D[l.k].length : ''}</span>
+      </button>`).join('');
+}
+
+function buildMap() {
+  const svg = document.getElementById('map-svg');
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.id = 'map-root';
+
+  // Base India outline
+  const indiaPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+  indiaPath.setAttribute('d', D.india || '');
+  indiaPath.setAttribute('class','india-path');
+  g.appendChild(indiaPath);
+
+  svg.appendChild(g);
+}
+
+function toggleLayer(key) {
+  const btn = document.getElementById('btn-'+key);
+  if (activeLayer === key) {
+    activeLayer = null;
+    btn.classList.remove('active');
+  } else {
+    if (activeLayer) document.getElementById('btn-'+activeLayer)?.classList.remove('active');
+    activeLayer = key;
+    btn.classList.add('active');
+  }
+  renderLayer();
+}
+
+function renderLayer() {
+  const svg = document.getElementById('map-svg');
+  // Remove old layer
+  document.getElementById('layer-g')?.remove();
+  document.getElementById('info-panel').innerHTML = '<div class="info-placeholder">Click any marker to see details.</div>';
+
+  if (!activeLayer) return;
+
+  const layer = LAYERS.find(l => l.k === activeLayer);
+  const items = D[activeLayer] || [];
+  if (!items.length) return;
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.id = 'layer-g';
+
+  const q = document.getElementById('q').value.toLowerCase();
+
+  if (layer.shape === 'line') {
+    items.forEach((item, i) => {
+      if (q && !(item.name||'').toLowerCase().includes(q)) return;
+      if (!item.d) return;
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d', item.d);
+      p.setAttribute('class', activeLayer === 'rivers' ? 'river-path' : 'range-path');
+      p.setAttribute('data-idx', i);
+      p.style.cursor = 'pointer';
+      p.addEventListener('click', () => showInfo(item, layer));
+      g.appendChild(p);
+    });
+  } else {
+    items.forEach((item, i) => {
+      if (q && !(item.name||'').toLowerCase().includes(q)) return;
+      const x = item.x, y = item.y;
+      if (!x || !y) return;
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 5);
+      c.setAttribute('class','marker-circle');
+      c.setAttribute('fill', layer.color);
+      c.setAttribute('fill-opacity', '.85');
+      c.setAttribute('stroke','#fff');
+      c.setAttribute('stroke-width','1.5');
+      c.setAttribute('data-idx', i);
+      c.addEventListener('click', () => showInfo(item, layer));
+      g.appendChild(c);
+    });
+  }
+
+  svg.appendChild(g);
+}
+
+function showInfo(item, layer) {
+  const panel = document.getElementById('info-panel');
+  let html = `<div class="info-name">${esc(item.name||'')}</div>`;
+  if (item.state) html += `<div class="info-state">${esc(item.state)}</div>`;
+  const rows = [
+    item.area && ['Area', (item.area).toLocaleString() + ' km²'],
+    item.since && ['Since', item.since],
+    item.basin && ['Basin', item.basin],
+    item.category && ['Category', item.category],
+    item.length && ['Length', item.length + ' km'],
+    item.unesco && ['UNESCO', item.unesco],
+  ].filter(Boolean);
+  if (rows.length) html += rows.map(([l,v]) => `<div class="info-row"><span class="info-label">${l}</span><span class="info-val">${esc(String(v))}</span></div>`).join('');
+  if (item.notes && item.notes.length) {
+    html += `<div class="info-notes">${item.notes.map(n => `<div class="info-note">• ${esc(n)}</div>`).join('')}</div>`;
+  }
+  if (item.more && item.more.length) {
+    html += item.more.map(m => `<div class="info-more"><div class="info-more-label">${esc(m.label||'')}</div>${(m.items||[]).map(i => `<div class="info-more-item">• ${esc(String(i))}</div>`).join('')}</div>`).join('');
+  }
+  panel.innerHTML = html;
+}
+
+function setupPanZoom() {
+  const wrap = document.getElementById('map-wrap');
+  const svg = document.getElementById('map-svg');
+
+  let startX, startY, startTX, startTY;
+
+  wrap.addEventListener('mousedown', e => {
+    drag = true; wrap.classList.add('dragging');
+    startX = e.clientX; startY = e.clientY;
+    startTX = transform.x; startTY = transform.y;
+  });
+  wrap.addEventListener('mousemove', e => {
+    if (!drag) return;
+    transform.x = startTX + (e.clientX - startX);
+    transform.y = startTY + (e.clientY - startY);
+    applyTransform();
+  });
+  wrap.addEventListener('mouseup', () => { drag = false; wrap.classList.remove('dragging'); });
+  wrap.addEventListener('mouseleave', () => { drag = false; wrap.classList.remove('dragging'); });
+
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    transform.x = mx - (mx - transform.x) * factor;
+    transform.y = my - (my - transform.y) * factor;
+    transform.scale = Math.max(0.5, Math.min(8, transform.scale * factor));
+    applyTransform();
+  }, {passive:false});
+
+  // Touch support
+  let touches = null;
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      drag = true;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      startTX = transform.x; startTY = transform.y;
+    } else if (e.touches.length === 2) {
+      drag = false;
+      touches = e.touches;
+    }
+  });
+  wrap.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && drag) {
+      transform.x = startTX + (e.touches[0].clientX - startX);
+      transform.y = startTY + (e.touches[0].clientY - startY);
+      applyTransform();
+    }
+  }, {passive:false});
+  wrap.addEventListener('touchend', () => { drag = false; touches = null; });
+
+  // Fit map on load
+  const wRect = wrap.getBoundingClientRect();
+  const scale = Math.min(wRect.width / 1000, wRect.height / 1140) * 0.9;
+  transform.scale = scale;
+  transform.x = (wRect.width - 1000 * scale) / 2;
+  transform.y = (wRect.height - 1140 * scale) / 2;
+  applyTransform();
+}
+
+function applyTransform() {
+  document.getElementById('map-root').setAttribute('transform',
+    `translate(${transform.x},${transform.y}) scale(${transform.scale})`);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('q').addEventListener('input', () => { if (activeLayer) renderLayer(); });
+
+init();
+</script>
+</body>
+</html>

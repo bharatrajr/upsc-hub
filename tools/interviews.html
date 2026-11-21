@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Interviews – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.toolbar{padding:.75rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-card);position:sticky;top:52px;z-index:50}
+.search-wrap{flex:1;min-width:140px}
+.list{max-width:960px;margin:0 auto;padding:1rem}
+.iv-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:.5rem;cursor:pointer;transition:border-color .15s}
+.iv-card:hover{border-color:var(--accent)}
+.iv-header{display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem}
+.iv-name{font-size:.92rem;font-weight:700;color:var(--fg);flex:1}
+.iv-board{font-size:.72rem;font-weight:600;color:var(--accent)}
+.iv-date{font-size:.68rem;color:var(--fg-muted)}
+.iv-chips{display:flex;gap:.35rem;flex-wrap:wrap}
+.iv-chip{font-size:.62rem;padding:2px 7px;border-radius:100px;background:var(--border);color:var(--fg-muted)}
+.iv-chip-gold{background:var(--gold-bg);color:var(--gold)}
+.iv-stats{display:flex;gap:.5rem;margin-top:.4rem;font-size:.7rem;color:var(--fg-muted)}
+/* Transcript modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+.modal-bg[hidden]{display:none}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;max-width:700px;width:100%;margin:auto;overflow:hidden;position:relative}
+.modal-header{padding:1.25rem 1.5rem .75rem;border-bottom:1px solid var(--border)}
+.modal-name{font-size:1.1rem;font-weight:700;color:var(--fg);margin-bottom:.25rem}
+.modal-meta{font-size:.78rem;color:var(--fg-muted)}
+.modal-close{position:absolute;top:.75rem;right:1rem;background:none;border:1px solid var(--border);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:.9rem;color:var(--fg-muted);display:flex;align-items:center;justify-content:center}
+.transcript{padding:1.25rem 1.5rem;font-size:.85rem;line-height:1.75;color:var(--fg);white-space:pre-wrap;max-height:70vh;overflow-y:auto}
+.modal-footer{padding:.75rem 1.5rem;border-top:1px solid var(--border);display:flex;gap:.5rem}
+.count-line{font-size:.75rem;color:var(--fg-muted);margin-bottom:.75rem}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">Interview Transcripts</span>
+</nav>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading interviews…</span></div>
+
+<div id="app" hidden>
+  <div class="toolbar">
+    <div class="search-wrap"><input class="search" id="q" placeholder="Search name, board, keyword…" autocomplete="off"></div>
+    <select id="board"><option value="">All boards</option></select>
+    <select id="year"><option value="">All years</option></select>
+    <select id="optional"><option value="">All optionals</option></select>
+    <select id="state"><option value="">All states</option></select>
+  </div>
+  <div class="list">
+    <div class="count-line" id="count"></div>
+    <div id="list"></div>
+    <div id="load-more-wrap" style="text-align:center;padding:.75rem;display:none">
+      <button class="btn btn-ghost" id="load-more-btn" onclick="loadMore()">Load more</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" hidden onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-name" id="modal-name"></div>
+      <div class="modal-meta" id="modal-meta"></div>
+    </div>
+    <div class="transcript" id="transcript"></div>
+    <div class="modal-footer">
+      <a id="modal-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="font-size:.8rem">View on Telegram ↗</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let all = [], filtered = [], shown = 0;
+const PAGE = 40;
+
+async function init() {
+  try {
+    const r = await fetch('https://upsckata.com/data/interviews.json');
+    const D = await r.json();
+    all = D.docs || [];
+    const meta = D.meta || {};
+
+    function fillFromMeta(id, arr) {
+      const el = document.getElementById(id);
+      (arr||[]).forEach(([v]) => { const o=document.createElement('option'); o.value=o.textContent=v; el.appendChild(o); });
+    }
+    fillFromMeta('board', meta.boards);
+    (meta.years||[]).forEach(y => { const o=document.createElement('option'); o.value=o.textContent=y; document.getElementById('year').appendChild(o); });
+    fillFromMeta('optional', meta.optionals);
+    fillFromMeta('state', meta.states);
+
+    document.getElementById('loading').hidden = true;
+    document.getElementById('app').hidden = false;
+    render();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div class="empty">Failed to load. Check your connection.</div>';
+  }
+}
+
+function render() {
+  const q        = document.getElementById('q').value.toLowerCase();
+  const board    = document.getElementById('board').value;
+  const year     = document.getElementById('year').value;
+  const optional = document.getElementById('optional').value;
+  const state    = document.getElementById('state').value;
+
+  filtered = all;
+  if (q)        filtered = filtered.filter(d => (d.n||'').toLowerCase().includes(q) || (d.b||'').toLowerCase().includes(q) || (d.t||'').toLowerCase().includes(q));
+  if (board)    filtered = filtered.filter(d => d.b === board);
+  if (year)     filtered = filtered.filter(d => String(d.y) === year);
+  if (optional) filtered = filtered.filter(d => (d.o||[]).includes(optional));
+  if (state)    filtered = filtered.filter(d => (d.st||[]).includes(state));
+
+  document.getElementById('count').textContent = `${filtered.length.toLocaleString()} transcript${filtered.length!==1?'s':''}`;
+  shown = 0;
+  document.getElementById('list').innerHTML = '';
+  loadMore();
+}
+
+function loadMore() {
+  const batch = filtered.slice(shown, shown + PAGE);
+  shown += batch.length;
+  const list = document.getElementById('list');
+  const startIdx = shown - batch.length;
+
+  list.insertAdjacentHTML('beforeend', batch.map((d, bi) => {
+    const idx = startIdx + bi;
+    const chips = [
+      d.b && `<span class="iv-chip iv-chip-gold">${esc(d.b)}</span>`,
+      ...(d.o||[]).map(o => `<span class="iv-chip">${esc(o)}</span>`),
+      ...(d.st||[]).map(s => `<span class="iv-chip">${esc(s)}</span>`),
+      d.s && `<span class="iv-chip">${esc(d.s)}</span>`,
+    ].filter(Boolean);
+
+    return `<div class="iv-card" onclick="openDoc(${idx})">
+      <div class="iv-header">
+        <div>
+          <div class="iv-name">${esc(d.n||'Anonymous')}</div>
+          <div style="display:flex;gap:.5rem;margin-top:2px">
+            <span class="iv-board">${esc(d.b||'')}</span>
+            <span class="iv-date">${d.d||d.y||''}</span>
+          </div>
+        </div>
+      </div>
+      ${chips.length ? `<div class="iv-chips">${chips.join('')}</div>` : ''}
+      <div class="iv-stats">
+        ${d.q ? `<span>${d.q} questions</span>` : ''}
+        ${d.w ? `<span>~${d.w} words</span>` : ''}
+        ${d.v ? `<span>${d.v} views</span>` : ''}
+      </div>
+    </div>`;
+  }).join(''));
+
+  const moreWrap = document.getElementById('load-more-wrap');
+  moreWrap.style.display = shown < filtered.length ? '' : 'none';
+  if (shown < filtered.length) {
+    document.getElementById('load-more-btn').textContent = `Load more (${filtered.length - shown} remaining)`;
+  }
+}
+
+function openDoc(idx) {
+  const d = filtered[idx];
+  if (!d) return;
+  document.getElementById('modal-name').textContent = d.n || 'Anonymous';
+  document.getElementById('modal-meta').textContent = [d.b, d.d, (d.o||[]).join(', '), (d.st||[]).join(', ')].filter(Boolean).join(' · ');
+  document.getElementById('transcript').textContent = d.t || 'Transcript not available.';
+  if (d.u) { document.getElementById('modal-link').href = d.u; document.getElementById('modal-link').style.display = ''; }
+  else document.getElementById('modal-link').style.display = 'none';
+  document.getElementById('modal-bg').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-bg')) return;
+  document.getElementById('modal-bg').hidden = true;
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+['q'].forEach(id => document.getElementById(id).addEventListener('input', render));
+['board','year','optional','state'].forEach(id => document.getElementById(id).addEventListener('change', render));
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Topper Copies – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.toolbar{padding:.75rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-card);position:sticky;top:52px;z-index:50}
+.search-wrap{flex:1;min-width:140px}
+.list{max-width:960px;margin:0 auto;padding:1rem}
+.tc-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.5rem;display:flex;gap:.75rem;align-items:flex-start;transition:border-color .15s}
+.tc-card:hover{border-color:var(--accent)}
+.tc-paper-badge{flex-shrink:0;font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;min-width:48px;text-align:center}
+.paper-Essay{background:#EEF2FF;color:#3B5BDB}
+.paper-GS1{background:#FFF3BF;color:#966A00}
+.paper-GS2{background:#E9FAF0;color:#0F6B35}
+.paper-GS3{background:#FFF0F3;color:#A61E4D}
+.paper-GS4{background:#F3ECFF;color:#6741D9}
+@media(prefers-color-scheme:dark){.paper-Essay{background:#1A2050;color:#748FFC}.paper-GS1{background:#2B1F00;color:#FFD43B}.paper-GS2{background:#0C2E18;color:#51CF66}.paper-GS3{background:#2B0916;color:#FA5252}.paper-GS4{background:#1A0A42;color:#CC5DE8}}
+.tc-body{flex:1;min-width:0}
+.tc-question{font-size:.88rem;color:var(--fg);line-height:1.5;margin-bottom:.35rem}
+.tc-meta{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.tc-topper{font-size:.72rem;font-weight:600;color:var(--accent)}
+.tc-year{font-size:.68rem;color:var(--fg-muted)}
+.tc-marks{font-size:.68rem;color:var(--gold);font-weight:600}
+.tc-words{font-size:.62rem;color:var(--fg-muted)}
+.tc-link{flex-shrink:0;font-size:.72rem;padding:5px 10px;background:var(--accent-bg);color:var(--accent);text-decoration:none;border-radius:5px;font-weight:600;white-space:nowrap}
+.tc-link:hover{background:var(--accent);color:#fff}
+.count-line{font-size:.75rem;color:var(--fg-muted);margin-bottom:.75rem}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">Topper Copies</span>
+</nav>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading answers…</span></div>
+
+<div id="app" hidden>
+  <div class="toolbar">
+    <div class="search-wrap"><input class="search" id="q" placeholder="Search questions…" autocomplete="off"></div>
+    <select id="paper"><option value="">All papers</option></select>
+    <select id="year"><option value="">All years</option></select>
+    <select id="topper"><option value="">All toppers</option></select>
+  </div>
+  <div class="list">
+    <div class="count-line" id="count"></div>
+    <div id="list"></div>
+    <div id="load-more-wrap" style="text-align:center;padding:.75rem;display:none">
+      <button class="btn btn-ghost" id="load-more-btn" onclick="loadMore()">Load more</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let all = [], filtered = [], shown = 0;
+const PAGE = 50;
+
+async function init() {
+  try {
+    const r = await fetch('https://upsckata.com/data/bank.json');
+    const D = await r.json();
+    all = D.questions || [];
+
+    const papers  = [...new Set(all.map(q=>q.paper).filter(Boolean))].sort();
+    const years   = [...new Set(all.map(q=>q.year).filter(Boolean))].sort((a,b)=>b-a);
+    const toppers = [...new Set(all.map(q=>q.topper).filter(Boolean))].sort();
+
+    function fill(id, items) {
+      const el = document.getElementById(id);
+      items.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; el.appendChild(o); });
+    }
+    fill('paper', papers); fill('year', years); fill('topper', toppers);
+
+    document.getElementById('loading').hidden = true;
+    document.getElementById('app').hidden = false;
+    render();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div class="empty">Failed to load. Check your connection.</div>';
+  }
+}
+
+function render() {
+  const q = document.getElementById('q').value.toLowerCase();
+  const paper  = document.getElementById('paper').value;
+  const year   = document.getElementById('year').value;
+  const topper = document.getElementById('topper').value;
+
+  filtered = all;
+  if (q)      filtered = filtered.filter(a => (a.text||'').toLowerCase().includes(q) || (a.topper||'').toLowerCase().includes(q));
+  if (paper)  filtered = filtered.filter(a => a.paper === paper);
+  if (year)   filtered = filtered.filter(a => String(a.year) === year);
+  if (topper) filtered = filtered.filter(a => a.topper === topper);
+
+  document.getElementById('count').textContent = `${filtered.length.toLocaleString()} answer${filtered.length!==1?'s':''}`;
+  shown = 0;
+  document.getElementById('list').innerHTML = '';
+  loadMore();
+}
+
+function loadMore() {
+  const batch = filtered.slice(shown, shown + PAGE);
+  shown += batch.length;
+  const list = document.getElementById('list');
+  list.insertAdjacentHTML('beforeend', batch.map(a => `
+    <div class="tc-card">
+      <div class="tc-paper-badge paper-${(a.paper||'').replace(/\s/,'')}">${esc(a.paper||'—')}</div>
+      <div class="tc-body">
+        <div class="tc-question">${esc(a.text||'')}</div>
+        <div class="tc-meta">
+          <span class="tc-topper">Rank ${a.rank||'?'} · ${esc(a.topper||'')}</span>
+          <span class="tc-year">${a.year||''}</span>
+          ${a.marks ? `<span class="tc-marks">${a.marks}m</span>` : ''}
+          ${a.words ? `<span class="tc-words">${a.words}w</span>` : ''}
+          ${a.written ? `<span class="tc-words">wrote ${a.written}w</span>` : ''}
+        </div>
+      </div>
+      ${a.url ? `<a class="tc-link" href="${a.url}" target="_blank" rel="noopener">View PDF</a>` : ''}
+    </div>`).join(''));
+
+  const moreWrap = document.getElementById('load-more-wrap');
+  moreWrap.style.display = shown < filtered.length ? '' : 'none';
+  if (shown < filtered.length) {
+    document.getElementById('load-more-btn').textContent = `Load more (${filtered.length - shown} remaining)`;
+  }
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+['q','paper','year','topper'].forEach(id => {
+  document.getElementById(id).addEventListener(id==='q'?'input':'change', render);
+});
+
+init();
+</script>
+</body>
+</html>

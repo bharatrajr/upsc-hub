@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Pomodoro – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.page{max-width:520px;margin:0 auto;padding:1.5rem 1rem}
+.pomo-wrap{text-align:center;padding:2rem 1rem 1.5rem}
+.mode-tabs{display:inline-flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:2px;margin-bottom:2rem}
+.mode-tab{padding:6px 16px;border:none;background:none;cursor:pointer;font-size:.82rem;font-weight:500;border-radius:5px;color:var(--fg-muted);font-family:inherit;transition:all .15s}
+.mode-tab.active{background:var(--accent);color:#fff}
+.ring-wrap{position:relative;width:200px;height:200px;margin:0 auto 1.5rem}
+.ring-svg{width:200px;height:200px;transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:var(--border);stroke-width:8}
+.ring-fill{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .3s}
+.ring-fill.break{stroke:var(--gold)}
+.ring-time{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-clock{font-family:'Instrument Serif',serif;font-size:3.2rem;line-height:1;font-variant-numeric:tabular-nums;color:var(--fg)}
+.ring-label{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-muted)}
+.session-label{font-size:.88rem;color:var(--fg-muted);margin-bottom:1.25rem;min-height:1.4em}
+.controls{display:flex;gap:.75rem;justify-content:center;margin-bottom:1.5rem}
+.settings-row{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.5rem}
+.setting-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.setting-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted)}
+.setting-val{display:flex;align-items:center;gap:6px}
+.setting-val span{font-size:.88rem;font-weight:600;color:var(--fg);min-width:24px;text-align:center}
+.adj-btn{width:24px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);cursor:pointer;font-size:.88rem;line-height:1;color:var(--fg-muted);display:flex;align-items:center;justify-content:center;font-family:inherit}
+.adj-btn:hover{border-color:var(--accent);color:var(--accent)}
+/* Session log */
+.log-section{border-top:1px solid var(--border);padding-top:1rem}
+.log-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-bottom:.75rem}
+.log-entry{display:flex;gap:.5rem;align-items:center;padding:.4rem .6rem;border-radius:6px;font-size:.8rem;margin-bottom:3px;background:var(--bg-card);border:1px solid var(--border)}
+.log-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.log-dot.focus{background:var(--accent)}
+.log-dot.break{background:var(--gold)}
+.log-time{font-size:.7rem;color:var(--fg-muted);margin-left:auto}
+.stats-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.stat-box{flex:1;min-width:80px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.6rem .75rem;text-align:center}
+.stat-num{font-size:1.3rem;font-weight:700;color:var(--accent)}
+.stat-lbl{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted)}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">Pomodoro Timer</span>
+</nav>
+
+<div class="page">
+  <div class="pomo-wrap">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tab-focus" onclick="setMode('focus')">Focus</button>
+      <button class="mode-tab" id="tab-short" onclick="setMode('short')">Short break</button>
+      <button class="mode-tab" id="tab-long" onclick="setMode('long')">Long break</button>
+    </div>
+
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 200 200">
+        <circle class="ring-track" cx="100" cy="100" r="88"/>
+        <circle class="ring-fill" id="ring" cx="100" cy="100" r="88"
+          stroke-dasharray="552.9" stroke-dashoffset="0"/>
+      </svg>
+      <div class="ring-time">
+        <div class="ring-clock" id="clock">25:00</div>
+        <div class="ring-label" id="ring-label">Focus</div>
+      </div>
+    </div>
+
+    <div class="session-label" id="session-label">Session 1 · Focus time</div>
+
+    <div class="controls">
+      <button class="btn btn-ghost" onclick="resetTimer()">Reset</button>
+      <button class="btn btn-primary" id="main-btn" onclick="toggleTimer()">Start</button>
+      <button class="btn btn-ghost" onclick="skipToNext()">Skip →</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="setting-item">
+        <div class="setting-label">Focus</div>
+        <div class="setting-val">
+          <button class="adj-btn" onclick="adjust('focus',-5)">−</button>
+          <span id="v-focus">25</span>
+          <button class="adj-btn" onclick="adjust('focus',5)">+</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Short break</div>
+        <div class="setting-val">
+          <button class="adj-btn" onclick="adjust('short',-1)">−</button>
+          <span id="v-short">5</span>
+          <button class="adj-btn" onclick="adjust('short',1)">+</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-label">Long break</div>
+        <div class="setting-val">
+          <button class="adj-btn" onclick="adjust('long',-5)">−</button>
+          <span id="v-long">15</span>
+          <button class="adj-btn" onclick="adjust('long',5)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-section">
+    <div class="stats-row" id="stats"></div>
+    <div class="log-title">Session log</div>
+    <div id="log-list"></div>
+  </div>
+</div>
+
+<script>
+const CIRC = 2 * Math.PI * 88;
+let settings = { focus: 25, short: 5, long: 15 };
+let mode = 'focus';
+let running = false, timer = null;
+let totalSecs = 0, remaining = 0;
+let sessionNum = 1, pomosThisSet = 0;
+let log = [];
+
+const MODES = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+
+function secs(mode) { return settings[mode] * 60; }
+
+function setMode(m) {
+  mode = m;
+  ['focus','short','long'].forEach(k => document.getElementById('tab-'+k).className = 'mode-tab' + (k===m?' active':''));
+  resetTimer();
+}
+
+function resetTimer() {
+  clearInterval(timer); running = false;
+  totalSecs = secs(mode);
+  remaining = totalSecs;
+  document.getElementById('main-btn').textContent = 'Start';
+  updateRing();
+  updateClock();
+}
+
+function toggleTimer() {
+  if (running) {
+    clearInterval(timer); running = false;
+    document.getElementById('main-btn').textContent = 'Resume';
+  } else {
+    running = true;
+    document.getElementById('main-btn').textContent = 'Pause';
+    timer = setInterval(tick, 1000);
+  }
+}
+
+function tick() {
+  remaining--;
+  updateRing();
+  updateClock();
+  if (remaining <= 0) {
+    clearInterval(timer); running = false;
+    finishSession();
+  }
+}
+
+function finishSession() {
+  beep();
+  log.unshift({ mode, label: MODES[mode], mins: settings[mode], time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) });
+  if (mode === 'focus') pomosThisSet++;
+  renderLog();
+  autoAdvance();
+}
+
+function autoAdvance() {
+  if (mode === 'focus') {
+    sessionNum++;
+    setMode(pomosThisSet % 4 === 0 ? 'long' : 'short');
+  } else {
+    setMode('focus');
+  }
+  updateSessionLabel();
+}
+
+function skipToNext() {
+  clearInterval(timer); running = false;
+  if (mode === 'focus') {
+    sessionNum++;
+    setMode(pomosThisSet % 4 === 0 ? 'long' : 'short');
+  } else {
+    setMode('focus');
+  }
+}
+
+function updateRing() {
+  const frac = remaining / totalSecs;
+  const offset = CIRC * (1 - frac);
+  const ring = document.getElementById('ring');
+  ring.style.strokeDashoffset = offset;
+  ring.className = 'ring-fill' + (mode !== 'focus' ? ' break' : '');
+}
+
+function updateClock() {
+  const m = Math.floor(remaining/60), s = remaining%60;
+  document.getElementById('clock').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  document.getElementById('ring-label').textContent = MODES[mode];
+  updateSessionLabel();
+}
+
+function updateSessionLabel() {
+  document.getElementById('session-label').textContent =
+    mode === 'focus'
+      ? `Session ${sessionNum} · Focus time`
+      : `Session ${sessionNum-1} done · ${MODES[mode]}`;
+}
+
+function renderLog() {
+  const focusCount = log.filter(l => l.mode === 'focus').length;
+  const focusMins = log.filter(l => l.mode === 'focus').reduce((s,l) => s+l.mins, 0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-box"><div class="stat-num">${focusCount}</div><div class="stat-lbl">Pomodoros</div></div>
+    <div class="stat-box"><div class="stat-num">${focusMins}</div><div class="stat-lbl">Focus mins</div></div>`;
+
+  document.getElementById('log-list').innerHTML = log.slice(0,10).map(l => `
+    <div class="log-entry">
+      <div class="log-dot ${l.mode==='focus'?'focus':'break'}"></div>
+      <span>${l.label} · ${l.mins} min</span>
+      <span class="log-time">${l.time}</span>
+    </div>`).join('') || '<div class="empty" style="padding:1rem">No sessions yet. Start your first pomodoro!</div>';
+}
+
+function adjust(key, delta) {
+  const min = key === 'focus' ? 5 : 1, max = key === 'long' ? 60 : key === 'focus' ? 60 : 15;
+  settings[key] = Math.max(min, Math.min(max, settings[key] + delta));
+  document.getElementById('v-'+key).textContent = settings[key];
+  if (key === mode) resetTimer();
+}
+
+let audioCtx;
+function beep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    [0, 300].forEach(delay => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.value = mode === 'focus' ? 660 : 440;
+      const t = audioCtx.currentTime + delay/1000;
+      g.gain.setValueAtTime(.3, t);
+      g.gain.exponentialRampToValueAtTime(.001, t + .4);
+      o.start(t); o.stop(t + .4);
+    });
+  } catch(e) {}
+}
+
+resetTimer();
+renderLog();
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Timeline – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.toolbar{padding:.75rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-card);position:sticky;top:52px;z-index:50}
+.tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:2px}
+.tab{padding:5px 14px;border:none;background:none;cursor:pointer;font-size:.82rem;font-weight:500;border-radius:5px;color:var(--fg-muted);font-family:inherit}
+.tab.active{background:var(--accent);color:#fff}
+.search-wrap{flex:1;min-width:140px}
+.list{max-width:800px;margin:0 auto;padding:1.25rem 1rem}
+.event-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.75rem;display:grid;grid-template-columns:auto 1fr;transition:box-shadow .15s}
+.event-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.event-img{width:80px;height:80px;object-fit:cover;flex-shrink:0}
+@media(max-width:480px){.event-card{grid-template-columns:1fr}}
+.event-no-img{width:80px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--accent)}
+.event-body{padding:.75rem 1rem}
+.event-when{font-size:.7rem;font-weight:700;letter-spacing:.06em;color:var(--accent);margin-bottom:.2rem;text-transform:uppercase}
+.event-title{font-size:.92rem;font-weight:600;margin-bottom:.3rem;color:var(--fg)}
+.event-text{font-size:.8rem;color:var(--fg-muted);line-height:1.5}
+.event-group{display:inline-block;margin-top:.4rem;font-size:.62rem;font-weight:600;padding:1px 7px;border-radius:100px;background:var(--gold-bg);color:var(--gold)}
+.count-line{font-size:.75rem;color:var(--fg-muted);margin-bottom:.75rem;padding:0 .25rem}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">Timeline</span>
+</nav>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading Timeline…</span></div>
+
+<div id="app" hidden>
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="tab active" data-era="modern" onclick="switchEra('modern',this)">Modern</button>
+      <button class="tab" data-era="ancient" onclick="switchEra('ancient',this)">Ancient</button>
+      <button class="tab" data-era="early" onclick="switchEra('early',this)">Early</button>
+    </div>
+    <div class="search-wrap"><input class="search" id="q" placeholder="Search events…" autocomplete="off"></div>
+    <select id="grp"><option value="">All groups</option></select>
+  </div>
+  <div class="list">
+    <div class="count-line" id="count"></div>
+    <div id="events"></div>
+  </div>
+</div>
+
+<script>
+let D = null, era = 'modern';
+
+async function init() {
+  try {
+    const r = await fetch('https://upsckata.com/data/timeline.json');
+    D = await r.json();
+    document.getElementById('loading').hidden = true;
+    document.getElementById('app').hidden = false;
+    populateGroups();
+    render();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div class="empty">Failed to load. Check your connection.</div>';
+  }
+}
+
+function getEvents() {
+  const section = era === 'early' ? D.early : D[era] || {};
+  return section.events || [];
+}
+
+function getGroups() {
+  const section = era === 'early' ? D.early : D[era] || {};
+  return (section.groups || []).map(g => Array.isArray(g) ? g[0] : g);
+}
+
+function populateGroups() {
+  const sel = document.getElementById('grp');
+  sel.innerHTML = '<option value="">All groups</option>';
+  for (const g of getGroups()) {
+    const o = document.createElement('option');
+    o.value = g; o.textContent = g;
+    sel.appendChild(o);
+  }
+}
+
+function render() {
+  const q = document.getElementById('q').value.toLowerCase();
+  const grp = document.getElementById('grp').value;
+  let evs = getEvents();
+  if (q) evs = evs.filter(e => (e.title||'').toLowerCase().includes(q) || (e.text||'').toLowerCase().includes(q) || (e.when||'').includes(q));
+  if (grp) evs = evs.filter(e => e.group === grp);
+
+  document.getElementById('count').textContent = `${evs.length} event${evs.length!==1?'s':''}`;
+
+  const el = document.getElementById('events');
+  if (!evs.length) { el.innerHTML = '<div class="empty">No events match.</div>'; return; }
+  el.innerHTML = evs.map(e => `
+    <div class="event-card">
+      ${e.bg ? `<img class="event-img" src="${e.bg}" alt="" loading="lazy" onerror="this.style.display='none'">` : `<div class="event-no-img">📅</div>`}
+      <div class="event-body">
+        <div class="event-when">${e.when||e.y||''}</div>
+        <div class="event-title">${esc(e.title||'')}</div>
+        ${e.text ? `<div class="event-text">${esc(e.text)}</div>` : ''}
+        ${e.group ? `<span class="event-group">${esc(e.group)}</span>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function switchEra(e, btn) {
+  era = e;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  populateGroups();
+  document.getElementById('grp').value = '';
+  document.getElementById('q').value = '';
+  render();
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('q').addEventListener('input', render);
+document.getElementById('grp').addEventListener('change', render);
+
+init();
+</script>
+</body>
+</html>

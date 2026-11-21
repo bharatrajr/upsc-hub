@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Constitution – UPSC Hub</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0A1428">
+<link rel="manifest" href="../manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+.layout{display:grid;grid-template-columns:270px 1fr;height:calc(100vh - 52px)}
+@media(max-width:680px){.layout{grid-template-columns:1fr;height:auto}}
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;height:calc(100vh - 52px);position:sticky;top:52px;background:var(--bg-card)}
+@media(max-width:680px){.sidebar{height:auto;border-right:none;border-bottom:1px solid var(--border);max-height:40vh}}
+.sb-search{padding:.75rem}
+.part-btn{width:100%;text-align:left;padding:.55rem .75rem;border:none;background:none;cursor:pointer;font-family:inherit;font-size:.82rem;color:var(--fg-muted);border-left:2px solid transparent;transition:all .12s}
+.part-btn:hover{background:var(--accent-bg);color:var(--fg)}
+.part-btn.active{border-left-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+.part-num{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:1px}
+.art-links{padding:0 .5rem .5rem 1.5rem}
+.art-link{display:block;padding:.25rem .5rem;font-size:.78rem;color:var(--fg-muted);text-decoration:none;border-radius:4px;cursor:pointer}
+.art-link:hover,.art-link.active{color:var(--accent);background:var(--accent-bg)}
+.content{padding:1.5rem 2rem;overflow-y:auto;height:calc(100vh - 52px)}
+@media(max-width:680px){.content{padding:1rem;height:auto}}
+.welcome{padding:3rem 1rem;text-align:center;color:var(--fg-muted)}
+.welcome h2{color:var(--fg);margin-bottom:.5rem}
+.preamble-block{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.5rem 2rem;margin-bottom:1.5rem;font-size:.9rem;line-height:1.8;white-space:pre-wrap}
+.part-label{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-muted);margin-bottom:1.25rem}
+.article{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem;scroll-margin-top:1rem}
+.article-num{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-bottom:.35rem}
+.article-title{font-size:1rem;font-weight:700;margin:0 0 .75rem;color:var(--fg)}
+.article-body{font-size:.88rem;line-height:1.8;color:var(--fg)}
+.article-body sup{color:var(--accent);font-size:.68em;cursor:help}
+.clause{margin-left:1.25rem;margin-bottom:.5rem}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="../index.html" class="nav-back">← UPSC Hub</a>
+  <span class="nav-title">Constitution of India</span>
+</nav>
+
+<div id="loading" class="loading"><div class="spinner"></div><span>Loading Constitution…</span></div>
+
+<div id="app" hidden>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sb-search"><input class="search" id="q" placeholder="Search articles…" autocomplete="off"></div>
+      <div id="parts"></div>
+    </aside>
+    <div class="content" id="content">
+      <div class="welcome" id="welcome">
+        <h2>Constitution of India</h2>
+        <p>Select a part from the sidebar, or search for articles.<br>Contains all 471 articles in force, with footnotes.</p>
+        <p><button class="btn btn-ghost" onclick="showPreamble()">Read the Preamble</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let D = null, activePart = null, activeArt = null;
+
+async function init() {
+  try {
+    const r = await fetch('https://upsckata.com/data/constitution.json');
+    D = await r.json();
+    document.getElementById('loading').hidden = true;
+    document.getElementById('app').hidden = false;
+    buildParts('');
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div class="empty">Failed to load. Check your connection.</div>';
+  }
+}
+
+function buildParts(q) {
+  const el = document.getElementById('parts');
+  el.innerHTML = '';
+  const ql = q.toLowerCase();
+  for (const part of (D.parts || [])) {
+    const arts = (part.articles || []).filter(id => {
+      if (!ql) return true;
+      const a = D.articles[id];
+      if (!a) return false;
+      return (a.title||'').toLowerCase().includes(ql) || artText(a).toLowerCase().includes(ql) || id.toLowerCase().includes(ql);
+    });
+    if (ql && !arts.length) continue;
+
+    const wrap = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.className = 'part-btn' + (part === activePart ? ' active' : '');
+    btn.innerHTML = `<span class="part-num">Part ${part.id||''}</span>${part.title||''}`;
+    btn.onclick = () => selectPart(part);
+    wrap.appendChild(btn);
+
+    if (part === activePart || ql) {
+      const al = document.createElement('div');
+      al.className = 'art-links';
+      for (const id of arts) {
+        const a = D.articles[id];
+        const lnk = document.createElement('span');
+        lnk.className = 'art-link' + (id === activeArt ? ' active' : '');
+        lnk.textContent = `Art. ${id}${a?.title ? ' — ' + a.title : ''}`;
+        lnk.onclick = () => selectArt(id, part);
+        al.appendChild(lnk);
+      }
+      wrap.appendChild(al);
+    }
+    el.appendChild(wrap);
+  }
+}
+
+function selectPart(part) {
+  activePart = part; activeArt = null;
+  buildParts(document.getElementById('q').value);
+  renderPart(part);
+}
+
+function selectArt(id, part) {
+  activeArt = id;
+  if (part && activePart !== part) { activePart = part; }
+  buildParts(document.getElementById('q').value);
+  if (activePart !== part) renderPart(part);
+  setTimeout(() => {
+    const el = document.getElementById('art-' + id);
+    if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 50);
+}
+
+function renderPart(part) {
+  const c = document.getElementById('content');
+  let html = `<p class="part-label">Part ${part.id||''} — ${part.title||''}</p>`;
+  for (const id of (part.articles||[])) {
+    const a = D.articles[id];
+    if (a) html += artHTML(id, a);
+  }
+  c.innerHTML = html;
+  c.scrollTop = 0;
+}
+
+function artHTML(id, a) {
+  return `<div class="article" id="art-${id}">
+    <div class="article-num">Article ${id}</div>
+    ${a.title ? `<div class="article-title">${esc(a.title)}</div>` : ''}
+    <div class="article-body">${renderArt(a)}</div>
+  </div>`;
+}
+
+function renderArt(a) {
+  if (!a) return '';
+  if (a.blocks) return a.blocks.map(b => `<p>${renderRuns(b.runs||[])}</p>`).join('');
+  if (a.text) return `<p>${esc(a.text)}</p>`;
+  return '';
+}
+
+function renderRuns(runs) {
+  return (runs||[]).map(r => {
+    if (typeof r === 'string') return esc(r);
+    if (r.fn !== undefined) return `<sup title="Footnote ${r.fn}">[${r.fn}]</sup>`;
+    if (r.text) return esc(r.text);
+    return '';
+  }).join('');
+}
+
+function artText(a) {
+  if (!a) return '';
+  if (a.blocks) return a.blocks.map(b => (b.runs||[]).filter(r=>typeof r==='string').join(' ')).join(' ');
+  return a.text || '';
+}
+
+function showPreamble() {
+  activePart = null; activeArt = null;
+  buildParts('');
+  const c = document.getElementById('content');
+  const p = D.preamble;
+  if (!p) { c.innerHTML = '<div class="empty">Preamble not found.</div>'; return; }
+  const text = (p.blocks||[]).map(b => renderRuns(b.runs||[])).join('\n');
+  c.innerHTML = `<p class="part-label">Preamble</p><div class="preamble-block">${text}</div>`;
+  c.scrollTop = 0;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('q').addEventListener('input', e => {
+  buildParts(e.target.value);
+  if (e.target.value && D) {
+    const c = document.getElementById('content');
+    document.getElementById('welcome') && (document.getElementById('welcome').style.display = 'none');
+    // Show first match
+    const ql = e.target.value.toLowerCase();
+    for (const part of D.parts||[]) {
+      for (const id of part.articles||[]) {
+        const a = D.articles[id];
+        if (a && ((a.title||'').toLowerCase().includes(ql) || artText(a).toLowerCase().includes(ql))) {
+          c.innerHTML = artHTML(id, a);
+          return;
+        }
+      }
+    }
+  }
+});
+
+init();
+</script>
+</body>
+</html>
